@@ -7,6 +7,11 @@ Purpose:
 - stay private until the codebase and publish posture are finalized
 - make it easier to promote selected docs to a future public-facing repository
 
+Documentation layout:
+- `Product/` for product-facing and operator-facing guidance
+- `Technical/` for engineering and implementation materials
+- `Regulatory/` for compliance, assurance, and trust materials
+
 Current contents:
 - README
 - SBOM

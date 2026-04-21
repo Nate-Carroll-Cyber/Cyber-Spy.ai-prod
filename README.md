@@ -1,4 +1,4 @@
-# Counter-Spy.ai: Adversary-Aware Prompt Firewall & Forwarding Gateway
+# Counter-Spy.ai: LLM Security & Governance Platform (Portfolio Project)
 
 Counter-Spy.ai is a secure GenAI control-plane for adversary-aware LLM governance. It is a policy-enforcing firewall first, with a forwarding path for clean traffic and a review/block path for suspicious traffic.
 

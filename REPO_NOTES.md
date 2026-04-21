@@ -13,6 +13,12 @@ Current contents:
 - Technical Specification
 - Operations Guide
 - selected docs from `docs/`
+- a `Regulatory/` folder for compliance and assurance materials
+
+Regulatory contents:
+- EU AI Act mapping
+- threat model
+- model card / model data overview
 
 Not included:
 - application source code

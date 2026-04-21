@@ -8,16 +8,16 @@ Purpose:
 - make it easier to promote selected docs to a future public-facing repository
 
 Documentation layout:
-- `Product/` for product-facing and operator-facing guidance
 - `Technical/` for engineering and implementation materials
 - `Regulatory/` for compliance, assurance, and trust materials
+- `code/` as a placeholder for future private source material
 
 Current contents:
 - README
-- SBOM
-- Technical Specification
 - Operations Guide
-- selected docs from `docs/`
+- `Technical/`
+- `Regulatory/`
+- `code/`
 - a `Regulatory/` folder for compliance and assurance materials
 
 Regulatory contents:

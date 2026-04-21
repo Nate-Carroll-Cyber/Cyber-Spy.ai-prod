@@ -3,6 +3,7 @@
 This folder groups compliance, governance, and assurance-oriented materials that support Counter-Spy.ai review, audit, and external readiness work.
 
 Current contents:
+- `ANALYST_GUIDE.md`
 - `EU_AI_Act_Mapping.md`
 - `Threat_Model.md`
 - `Model_Card.md`

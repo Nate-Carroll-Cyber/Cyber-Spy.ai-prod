@@ -92,7 +92,7 @@ Response:
     "timestamp": "2026-04-19T15:01:00.000Z",
     "sanitizedPrompt": "What kind of risk was the witness trying to avoid?",
     "detectionFlags": [],
-    "entropy": 3.6,
+    "entropy": 3.2,
     "globalEntropy": 4.1,
     "suspiciousChunks": [],
     "detectionLevel": "Clean",

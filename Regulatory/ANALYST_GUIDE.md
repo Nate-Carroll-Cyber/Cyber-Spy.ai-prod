@@ -2,6 +2,7 @@
 
 | Version | Date | Description |
 | :--- | :--- | :--- |
+| v2.1 | 2026-04-24 | Governance terminology refresh, entropy suspicious floor update, Bulk Ingest pause handling, selected-file visibility, and reviewed-outcome FPR/FNR metrics. |
 | v2.0 | 2026-04-21 | Promotion to Beta: stabilized local demo stack, guarded backend responder path, Lara translation modes, Sam Spade governed intake, and layered defense funnel metrics. |
 
 ---
@@ -76,7 +77,7 @@ graph TD
 **Global System Pause (DEFCON 1)** is the "Kill Switch" for the entire platform.
 
 > [!CAUTION]
-> **CRITICAL:** Activating the **Global System Pause** will trigger a site-wide 'Red Alert' UI and halt 100% of automated inference. This should only be used during active exploitation events or suspected data breaches.
+> **CRITICAL:** Activating the **Global System Pause** will trigger a site-wide 'Red Alert' UI, halt automated inference, and stop active Bulk Ingest replay without sending the remaining batch prompts. New Analyst Chat prompts are routed to manual review until service is resumed. This should only be used during active exploitation events or suspected data breaches.
 
 ### 4.1 Activation Procedure
 1.  Navigate to the **Metrics** tab.

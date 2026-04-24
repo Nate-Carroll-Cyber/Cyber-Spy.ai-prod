@@ -13,4 +13,4 @@ Contents:
 - `SAM_SPADE_CTF_INTEGRATION.md`
 
 Notes:
-- These files are mirrored from their existing locations to support a consistent documentation taxonomy across repos.
+- These files are mirrored from their existing locations to support a cleaner documentation taxonomy while preserving legacy paths.

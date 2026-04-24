@@ -3,6 +3,7 @@
 
 | Version | Date | Description |
 | :--- | :--- | :--- |
+| **v2.1** | 2026-04-24 | Governance terminology refresh, entropy suspicious floor update, Bulk Ingest pause handling, selected-file visibility, and reviewed-outcome FPR/FNR metrics. |
 | **v2.0** | 2026-04-21 | Promotion to Beta: stabilized local demo stack, guarded backend responder path, Lara translation modes, Sam Spade governed intake, and layered defense funnel metrics. |
 
 ---

@@ -10,6 +10,8 @@ Counter-Spy.ai decouples adversarial defense from response generation by enforci
 
 > Govern Every Prompt. Question Every Answer.
 
+[![Feature Walkthrough Video](assets/demo-thumbnail.png)](https://player.vimeo.com/video/1187322703?loop=1)
+
 ## 📚 Documentation
 - [Technical Architecture & Specifications](./Technical/ARCHITECTURE.md) - Deep dive into the Shield-and-Sword pattern and heuristics.
 - [Analyst & Administrator Operations Guide](./OPERATIONS_GUIDE.MD) - Standard Operating Procedures for SOC personnel.

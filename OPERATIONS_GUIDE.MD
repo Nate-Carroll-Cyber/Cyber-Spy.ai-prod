@@ -174,7 +174,7 @@ Only promote logs that meet at least one of the following criteria:
 
 | Flag | Severity | Technical Detail |
 | :--- | :--- | :--- |
-| `REDOS_ATTEMPT` | **Critical** | Input caused a sanitizer timeout (>100ms). Indicates catastrophic regex backtracking — potential DoS attempt. |
+| `REDOS_ATTEMPT` | **Critical** | Input caused a sanitizer timeout (>1,000ms). Indicates catastrophic regex backtracking - potential DoS attempt. |
 | `TOKEN_DILUTION` | **High** | High local entropy spike in sliding window. Obfuscated payload buried in noise text. |
 | `SYNTACTIC_PROBE` | **Medium** | Elevated density of imperative verbs (e.g., "forget," "ignore," "must"). Indicates system override attempt. |
 | `PII_LEAK` | **Variable** | Detection of SSN, email addresses, or AWS keys. Verify whether redaction succeeded before releasing. |

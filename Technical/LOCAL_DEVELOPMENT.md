@@ -40,16 +40,16 @@ VITE_API_BASE_URL=http://127.0.0.1:18080 npm run dev
 
 Open `http://localhost:3000/`.
 
-Clean prompts are routed to the backend gateway. The gateway runs local prechecks first, calls a separately configured OpenAI-compatible safeguard judge, and forwards to the downstream responder only after the safeguard judge returns `CLEAN` and **Responder Routing** is enabled. Analyst Chat safeguard configuration remains separate from the responder provider, Base URL, Model ID, API key, and context-window controls in the **Responder** tab. In the current runtime, clean responder calls are guided by the active Downstream Responder Prompt and relevant Knowledge Base policy context. Max context window is now a browser-local submission limit used by Analyst Chat and the Prompt Playground before dispatch.
+Clean prompts are routed to the backend gateway. The gateway runs local prechecks first, calls a separately configured OpenAI-compatible safeguard judge, and forwards to the downstream responder only after the safeguard judge returns `CLEAN` and **Responder Routing** is enabled. Analyst Chat safeguard configuration remains separate from the responder provider, Base URL, Model ID, API key, and context-window controls in the **Responder** tab. In the current runtime, clean responder calls are guided by the active Downstream Responder Prompt. Max context window is now a browser-local submission limit used by Analyst Chat and the Prompt Playground before dispatch.
 
 ### Safeguard Effective Prompt and Drift Hash
 
-The frontend builds one canonical safeguard instruction from the internal firewall baseline, guardrails policy, forbidden phrases, relevant Knowledge Base excerpts, the single backend-owned runtime JSON verdict contract, and neutral evidence contract. System Configuration displays this **Safeguard Effective Prompt Preview** and hashes that exact generated artifact for both the recommended baseline and current live config. Obsolete decision-shaped contract text is stripped from active guardrails policy before runtime prompt assembly, so the safeguard sees only the `{ verdict, analystReasoning }` schema. The separate Firewall Prompt and Forbidden Phrases read/edit panels are intentionally hidden so analysts review the runtime artifact instead of partial source components.
+The frontend stores one canonical safeguard instruction as the editable **Safeguard Effective Prompt**. System Configuration displays and edits that exact runtime artifact, then hashes the recommended baseline and current live config for drift detection.
 
-Current recommended effective safeguard prompt hash after promoting the saved System Configuration baseline that blocks `Sexual content, NSFW, nudity` and includes `Nudity` / `NSFW` as baseline blocked keywords:
+Current promoted recommended effective safeguard prompt hash:
 
 ```text
-8641f22d9359b18abb100d94c25f66d98b146452bc85c7692978f018e3cd68d4
+89ab9212ae0d97bac17e2072ec5851e76a3991b766602c9f5e5bcca127499a9d
 ```
 
 The backend sends the supplied effective prompt to the safeguard judge without appending another hidden wrapper. A backend fallback prompt exists only for direct `/v1/intercept` callers that omit `safeguardSystemPrompt`.
@@ -82,7 +82,7 @@ Admins can disable **Responder Routing** from the Analyst Chat System Status pan
 deterministic sanitizer -> Safeguard LLM judge -> LOCAL RESPONDER PASSTHROUGH
 ```
 
-This mode sends the generated Safeguard Effective Prompt and neutral evidence block to the safeguard judge, records `backendReachedSafeguard: true`, preserves `backendSafeguardLatencyMs`, and intentionally avoids any downstream responder provider call. Clean responses use:
+This mode sends the active Safeguard Effective Prompt and neutral evidence block to the safeguard judge, records `backendReachedSafeguard: true`, preserves `backendSafeguardLatencyMs`, and intentionally avoids any downstream responder provider call. Clean responses use:
 
 ```text
 LOCAL RESPONDER PASSTHROUGH: This prompt passed deterministic local guardrails and the Safeguard LLM judge. No downstream responder LLM or backend responder provider call was made.
@@ -97,6 +97,7 @@ Backend env option:
 - `SAFEGUARDS_API_BASE_URL`
 - `SAFEGUARDS_API_KEY`
 - `SAFEGUARDS_MODEL_ID`
+- `SAFEGUARDS_TIMEOUT_MS` (optional; default `30000`, bounded to 1s-120s)
 
 Purpose of the UI fields under Analyst Chat **System Status** settings:
 
@@ -104,7 +105,7 @@ Purpose of the UI fields under Analyst Chat **System Status** settings:
 - **Safeguard Model ID**: Browser-local model override for the firewall judge.
 - **Safeguard API Key**: Browser-memory-only key override sent to the local backend with Analyst Chat intercept requests. It is not written to localStorage.
 
-The safeguard judge must return a structured JSON verdict with exactly `{"verdict":"CLEAN|SUSPICIOUS|ADVERSARIAL","analystReasoning":"brief reason"}`. Legacy decision-shaped payloads such as `ALLOW_AND_FORWARD`, malformed JSON, or non-JSON output are no longer normalized into an allow path; they fail secure to `SUSPICIOUS` / `QUEUED`. If the safeguard judge is unavailable or rejects the request, `/v1/intercept` fails closed and does not call the downstream responder.
+The safeguard judge must return a structured JSON verdict with exactly `{"verdict":"CLEAN|SUSPICIOUS|ADVERSARIAL","analystReasoning":"brief reason"}`. Legacy decision-shaped payloads such as `ALLOW_AND_FORWARD`, malformed JSON, or non-JSON output are no longer normalized into an allow path; they fail secure to `SUSPICIOUS` / `QUEUED`. If the safeguard judge times out, is unavailable, or rejects the request, `/v1/intercept` returns structured `SHIELD_ERROR` telemetry, does not call the downstream responder, and the frontend activates Global System Pause. The browser also aborts a stuck `/v1/intercept` call after 45s as a backup.
 
 ### Optional: Live Downstream LLM Testing
 
@@ -125,7 +126,7 @@ Purpose of the UI fields under the **Responder** tab:
 - **Responder Base URL**: Browser-local override for the downstream responder endpoint. For OpenAI-compatible providers, set this to `https://api.openai.com/v1`; for Gemini, leave it blank to use `https://generativelanguage.googleapis.com/v1beta`.
 - **Responder Model ID**: Browser-local override for the downstream responder model used by Analyst Chat clean traffic. Gemini uses `gemini-2.5-flash` when this field is blank.
 - **Responder API Key**: Browser-memory-only key override sent to the local backend with clean responder requests. It is not written to localStorage.
-- **Max Context Window**: Browser-local max request budget. Analyst Chat and the Prompt Playground estimate the full forwarded request footprint, including runtime system prompt scaffolding and Knowledge Base context, and block submissions that exceed this value.
+- **Max Context Window**: Browser-local max request budget. Analyst Chat and the Prompt Playground estimate the forwarded request footprint and block submissions that exceed this value.
 
 These overrides are sent with each Analyst Chat intercept request from that browser only. Persisted browser settings exclude the responder API key; backend environment credentials remain the preferred operational path. The Prompt Playground uses the same estimator so its warning state and submit gate align with Analyst Chat. The active Downstream Responder Prompt from System Configuration is sent as the responder instruction when clean traffic is forwarded.
 
@@ -202,8 +203,26 @@ This starts:
 
 - `counter-spy-backend` on `http://localhost:18080`
 - `counter-spy-frontend` on `http://localhost:3000`
+- `counter-spy-postgres` on host port `15432` for pgvector-backed instruction similarity memory
 
 The frontend uses Vite's proxy layer inside the container to reach the backend cleanly, so browser requests stay same-origin for `/v1/*` and `/healthz`.
+
+The instruction-monitor database is intentionally ephemeral in the demo stack. `counter-spy-postgres` stores `/var/lib/postgresql/data` on tmpfs, so `docker compose -f docker-compose.demo.yml up --build --force-recreate -d` recreates a clean database. The backend initializes the pgvector schema lazily on first use. Sam Spade session data is different: it remains in the named Docker SQLite volume so CTF sessions can survive normal backend/frontend rebuilds.
+
+Useful instruction-monitor env vars:
+
+- `INSTRUCTION_MONITOR_ENABLED`
+- `INSTRUCTION_MONITOR_DATABASE_URL`
+- `INSTRUCTION_MONITOR_EMBEDDING_DIMENSIONS`
+- `INSTRUCTION_MONITOR_EMBEDDINGS_ENABLED`
+- `INSTRUCTION_MONITOR_EMBEDDINGS_API_BASE_URL`
+- `INSTRUCTION_MONITOR_EMBEDDINGS_API_KEY`
+- `INSTRUCTION_MONITOR_EMBEDDINGS_MODEL_ID`
+- `INSTRUCTION_MONITOR_EMBEDDINGS_MAX_CHUNKS`
+
+Normal frontend submissions do not generate embeddings in the browser. The backend generates whole-prompt and chunk embeddings when a valid OpenAI-compatible embeddings provider is configured through `INSTRUCTION_MONITOR_EMBEDDINGS_*` or the existing LLM/responder fallback variables. API callers can still supply `metadata.instructionEmbedding` or `metadata.instructionChunks` explicitly for controlled tests.
+
+Instruction-monitor routing note: exact SHA-256, loose SHA-256, and SimHash matches preserve the stored verdict. If the matched stored instruction was `ADVERSARIAL`, the new candidate is still blocked as `ADVERSARIAL`. Semantic whole-prompt or chunk-embedding matches are intentionally routed as `SUSPICIOUS` / review so analysts can validate overlap before promoting it into a deterministic block pattern.
 
 If you want Lara translation available in that Docker demo, make sure `.env.demo.local` exists before you bring the stack up.
 
@@ -223,9 +242,11 @@ Safeguard observability note: every safeguard call emits structured JSON log eve
 
 Detection signal note: the Metrics **Detection Signals** card is a prompt-count rollup by detection family. Local-review and Firestore-backed views share the same aggregation helpers. **Forbidden Phrase Hits** includes both `FORBIDDEN_TOPIC` and future `FORBIDDEN_PHRASE` flags, and **Obfuscation Hits** counts any stored obfuscation technique shown in prompt details rather than only `OBFUSCATED_INSTRUCTION`.
 
-Sanitizer note: the current runtime now treats any recognized obfuscation signal as `Adversarial`, including alphabetic substitution gibberish detected by the English-likeness heuristic. It also flags forced-prefix injection, anti-sanitization/no-disclaimer clauses, persona assignment plus unrestricted-capability language, and all-caps hyphenated persona handles (`ALLCAPS_PERSONA` is telemetry-only). If you are testing encoded, transformed, or cipher-like prompts, expect the local firewall to block them at the highest severity even before a decoded policy phrase is confirmed. Entropy also follows the shared live policy: `<= 3.6` stays allowed on entropy grounds, `> 3.6` up to the configured threshold is `Suspicious`, and anything above the configured threshold is `Adversarial`.
+Analyst Chat UI note: the Last Execution Results rail presents the local `Adversarial` / `Suspicious` alert first, followed by backend safeguard/monitor and Similarity Monitor evidence, then `Detections` badges. Shared help/info icons are hidden while modal overlays are open except when the icon is inside the active dialog content.
 
-Sam Spade session data is stored in a named Docker volume via a SQLite database mounted at `backend/data/sam-spade.db`.
+Sanitizer note: the current runtime treats recognized decode/structural obfuscation signals as `Adversarial`, including alphabetic substitution gibberish detected by the English-likeness heuristic. Covered local test families include byte-delimited Hex, binary, ASCII decimal, A1Z26, URL/HTML/unicode escapes, leetspeak, ROT13, reverse text, NATO phonetic, Morse, vertical reflow, and recursive decode chains. Pig Latin is the exception: it is detected as `PIG_LATIN` and routed to `Suspicious` review without decoding unless another stronger signal fires. The sanitizer also flags forced-prefix injection, anti-sanitization/no-disclaimer clauses, persona assignment plus unrestricted-capability language, and all-caps hyphenated persona handles (`ALLCAPS_PERSONA` is telemetry-only). Entropy follows the shared live policy: `<= 3.6` stays allowed on entropy grounds, `> 3.6` up to the configured threshold is `Suspicious`, and anything above the configured threshold is `Adversarial`.
+
+Sam Spade session data is stored in a named Docker volume via a SQLite database mounted at `backend/data/sam-spade.db`. The pgvector instruction-monitor database is not stored in a named volume in the demo stack.
 
 Note: in the current demo build, Sam Spade clean turns use the same governed path as Analyst Chat after local sanitizer and safeguard approval. When responder routing is enabled, the backend assembles the active Downstream Responder Prompt with admin-managed Sam Spade persona and scenario prompts before calling the responder. When responder routing is disabled, the safeguard verdict and latency are retained and the turn uses local responder passthrough. Every Sam Spade submission is still mirrored into the shared governed review path and audit trail under the `ctf_chat` source so case traffic is inspected like any other intake.
 

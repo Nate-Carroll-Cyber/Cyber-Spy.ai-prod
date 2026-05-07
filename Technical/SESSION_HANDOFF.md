@@ -7,7 +7,11 @@ This page captures the current implementation state so a future Codex session ca
 - The Docker demo stack is the active local test path:
   - Frontend: `http://localhost:3000`
   - Backend health: `http://127.0.0.1:18080/healthz`
+  - pgvector Postgres: `localhost:15432`
   - Rebuild command: `docker compose -f /Users/nate/Documents/Counter-Spy.ai/docker-compose.demo.yml up --build -d`
+- The instruction similarity monitor is enabled in the demo backend and uses `counter-spy-postgres`. The Postgres data directory is tmpfs-backed, so recreating the container starts with a clean instruction database. Sam Spade SQLite data still persists in its named Docker volume.
+- Similarity routing now separates fingerprint and semantic evidence: exact/loose SHA-256 or SimHash matches against stored `ADVERSARIAL` records remain adversarial blocks, while semantic whole-prompt or chunk-embedding matches are suspicious review events.
+- Analyst Chat Last Execution Results now orders local verdict alert first, then backend safeguard/monitor and Similarity Monitor detail, then `Detections` badges. Shared help/info icons are hidden while modal overlays are active except inside the open dialog content.
 - The Safeguard LLM may be disabled during feature testing. Feature-vector extraction must still run because it is calculated before any Safeguard LLM forwarding.
 - Local review mode stores telemetry in memory. After a refresh, the Metrics card may show no feature-vector audit events until a new prompt is submitted.
 
@@ -60,6 +64,7 @@ The Metrics view has a **Feature Pressure** card.
 | Frontend deterministic sanitizer | `src/lib/sanitizer.ts` |
 | Backend deterministic sanitizer | `backend/src/security/sanitizer.ts` |
 | Safeguard orchestration and observability | `backend/src/server.ts` |
+| Instruction similarity monitor | `backend/src/services/instruction-monitor/` |
 
 ## Safeguard Contract and Observability
 
@@ -88,17 +93,36 @@ The sanitizer now flags these structural jailbreak patterns:
 | `PERSONA_INJECTION` | Persona assignment plus unrestricted-capability language. |
 | `PAIRED_RESPONSE_INJECTION` | Dual approved/rejected, safe/unsafe, two-response, or opposite-response framing. Isolated hits are telemetry; paired with other jailbreak signals, route to review. |
 | `ALLCAPS_PERSONA` | Signal-only telemetry for all-caps hyphenated persona handles. |
+| `VERTICAL_TEXT` | Alphabetic vertical columns and `x - position N` rows are reflowed before detectors run; the signal itself routes to review/obfuscation handling. |
+| `BINARY_ENCODING` | 8-bit binary payloads, including spaced bytes, continuous aligned blobs, and one-byte-per-line layouts. |
+| `ASCII_DECIMAL` | Printable ASCII decimal byte lists, including recursive binary -> decimal wrapper payloads. |
+| `A1Z26` | Alphabet-position encoding with optional `0` word-space markers and an English bigram plausibility gate. |
+| `PIG_LATIN` | Signal-only detection by high non-common `ay`-suffix density; routes to review without attempting lossy decoding. |
+| `SAFEGUARD_TIMEOUT` / `SAFEGUARD_ERROR` / `FAIL_SECURE` | Structured safeguard fail-secure states. Timeout/failure returns `SHIELD_ERROR`, marks records `PENDING_REVIEW`, and activates Global System Pause. |
 
-Recognized obfuscation remains strict: current policy treats known obfuscation signals as adversarial even before a concealed payload is proven to decode into a blocked phrase.
+Recognized decode/structural obfuscation remains strict: current policy treats known obfuscation signals as adversarial even before a concealed payload is proven to decode into a blocked phrase. Pig Latin is the current detect-and-review exception because decoding is ambiguous and lossy.
+
+## Safeguard Timeout Boundary
+
+- Backend safeguard calls use `SAFEGUARDS_TIMEOUT_MS`, default `30000`.
+- The browser applies a 45s `/v1/intercept` abort as a second guard.
+- Safeguard timeout/provider failure must not fall back to local inference.
+- The fail-secure path emits `SHIELD_ERROR`, `SAFEGUARD_TIMEOUT` or `SAFEGUARD_ERROR`, and `FAIL_SECURE`, then queues the audit record and activates Global System Pause.
+
+## Credit Card Redaction Boundary
+
+- Generic 32-64 character hex strings are no longer treated as API keys.
+- Credit-card redaction requires non-alphanumeric token boundaries, valid major-network lengths, issuer prefix checks, and Luhn validation.
+- Long hashes, CIDs, transaction IDs, and hex payloads should remain intact for decoder inspection.
 
 ## Validation Snapshot
 
 Last known checks for this work:
 
+- `npm run test` passed with 112 tests after binary, ASCII decimal, A1Z26, Pig Latin, credit-card, and safeguard timeout/fail-secure changes.
 - `npm run lint` passed.
-- `npm run backend:test` passed with 84 tests.
-- Docker demo stack rebuilt and restarted.
-- Browser verification confirmed the Metrics Feature Pressure card shows the average 0-100 score and all six averaged component pressures after a local prompt submission.
+- `git diff --check` passed.
+- Docker demo stack includes backend, frontend, and pgvector Postgres. Recreate Postgres when a clean instruction database is needed.
 
 ## Docs Updated
 
